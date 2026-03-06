@@ -1,7 +1,11 @@
 
 .env
-attendance.db
-attendance.db-shm
-attendance.db-wal
-uploads/
+.env.local
+.vercel
 node_modules/
+attendance.db*
+uploads/
+*.csv
+hash.txt
+
+.vercel

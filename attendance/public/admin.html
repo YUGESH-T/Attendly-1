@@ -181,11 +181,18 @@
 
         // ─── Check Auth on Load ──────────────────────────────────
         (async function checkAuth() {
+            const token = localStorage.getItem('adminToken');
+            if (!token) return;
+
             try {
-                const res = await fetch('/api/admin/check');
+                const res = await fetch('/api/admin/check', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 const data = await res.json();
                 if (data.isAdmin) {
                     showDashboard();
+                } else {
+                    localStorage.removeItem('adminToken');
                 }
             } catch (e) { /* stay on login */ }
         })();
@@ -213,7 +220,8 @@
 
                 const data = await res.json();
 
-                if (res.ok && data.success) {
+                if (res.ok && data.success && data.token) {
+                    localStorage.setItem('adminToken', data.token);
                     showDashboard();
                 } else {
                     showLoginAlert('error', data.error || 'Login failed.');
@@ -245,7 +253,7 @@
         }
 
         async function logout() {
-            await fetch('/api/admin/logout');
+            localStorage.removeItem('adminToken');
             dashboardView.style.display = 'none';
             loginView.style.display = 'flex';
             logoutLink.style.display = 'none';
@@ -255,6 +263,9 @@
 
         // ─── Load Submissions ────────────────────────────────────
         async function loadSubmissions() {
+            const token = localStorage.getItem('adminToken');
+            if (!token) return;
+
             const params = new URLSearchParams();
             const search = searchInput.value.trim();
             const from = dateFrom.value;
@@ -265,8 +276,11 @@
             if (to) params.set('dateTo', to);
 
             try {
-                const res = await fetch(`/api/submissions?${params}`);
+                const res = await fetch(`/api/admin/submissions?${params}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (res.status === 401) {
+                    localStorage.removeItem('adminToken');
                     dashboardView.style.display = 'none';
                     loginView.style.display = 'flex';
                     logoutLink.style.display = 'none';
@@ -298,8 +312,8 @@
             deleteAllBtn.style.display = 'inline-flex';
 
             tableBody.innerHTML = data.map((row, i) => {
-                const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(row.filename);
-                const fileUrl = `/uploads/${row.filename}`;
+                const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(row.file_url);
+                const fileUrl = row.file_url;
                 const date = new Date(row.created_at);
                 const dateStr = date.toLocaleDateString('en-IN', {
                     day: '2-digit', month: 'short', year: 'numeric'
@@ -328,7 +342,7 @@
             <td>
               <div class="action-btns">
                 <button class="action-btn" onclick="previewFile('${fileUrl}', '${escapeHtml(row.original_name)}', ${isImage})">View</button>
-                <a href="${fileUrl}" download="${escapeHtml(row.original_name)}" class="action-btn" title="Download">Download</a>
+                <a href="${fileUrl}" download="${escapeHtml(row.original_name)}" target="_blank" class="action-btn" title="Download">Download</a>
                 <button class="action-btn delete" onclick="deleteSubmission(${row.id})">Delete</button>
               </div>
             </td>
@@ -365,22 +379,46 @@
         }
 
         // ─── CSV Download ────────────────────────────────────────
-        function downloadCSV() {
+        async function downloadCSV() {
+            const token = localStorage.getItem('adminToken');
             const params = new URLSearchParams();
             const search = searchInput.value.trim();
             if (search) params.set('search', search);
             if (dateFrom.value) params.set('dateFrom', dateFrom.value);
             if (dateTo.value) params.set('dateTo', dateTo.value);
 
-            window.location.href = `/api/submissions/csv?${params}`;
+            // We can't easily add headers to a window.location redirect,
+            // so we fetch the CSV as a blob and then download it.
+            try {
+                const res = await fetch(`/api/admin/csv?${params}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "submissions.csv";
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                }
+            } catch (err) {
+                console.error('CSV export failed:', err);
+            }
         }
 
         // ─── Delete Submission ───────────────────────────────────
         async function deleteSubmission(id) {
             if (!confirm('Are you sure you want to delete this submission?')) return;
 
+            const token = localStorage.getItem('adminToken');
             try {
-                const res = await fetch(`/api/submissions/${id}`, { method: 'DELETE' });
+                const res = await fetch(`/api/admin/delete?id=${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (res.ok) {
                     loadSubmissions();
                 }
@@ -393,8 +431,12 @@
         async function deleteAllSubmissions() {
             if (!confirm('WARNING: Are you sure you want to delete ALL submissions? This action cannot be undone.')) return;
 
+            const token = localStorage.getItem('adminToken');
             try {
-                const res = await fetch('/api/submissions', { method: 'DELETE' });
+                const res = await fetch('/api/admin/delete-all', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (res.ok) {
                     loadSubmissions();
                 } else {

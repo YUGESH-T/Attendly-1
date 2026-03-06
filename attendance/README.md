@@ -1,104 +1,80 @@
-# No Proxy Attendance Portal
+# No Proxy Attendance Portal (Vercel Edition)
 
 > Submit permission letters transparently and maintain attendance integrity.
 
-A modern web application for managing student permission letters related to attendance. Students upload permission letters, and admins can view, search, filter, and export all submissions.
+A serverless web application for managing student permission letters related to attendance. Students upload letters directly to cloud storage, and admins manage everything via a secure dashboard.
 
 ![Theme](https://img.shields.io/badge/Theme-Academic%20Integrity-0a1628)
-![Stack](https://img.shields.io/badge/Stack-Node.js%20%2B%20Express%20%2B%20SQLite-4a90d9)
+![Stack](https://img.shields.io/badge/Stack-Supabase%20%2B%20Vercel%20Blob-4a90d9)
 
 ## Features
 
 ### Student Interface
-- Upload permission letters (PDF or images)
-- Enter roll number, name, and reason
-- Drag & drop file upload with visual feedback
-- Success/error notifications
+- Cloud-based uploads (Vercel Blob)
+- Real-time duplicate submission prevention
+- Instant success receipt card
+- Mobile-first responsive design
 
 ### Admin Dashboard
-- Secure login (session-based auth)
-- View all submissions in a sortable table
-- Search by roll number
-- Filter by date range
-- Download submissions as CSV
-- Preview image files in modal
-- Delete individual submissions
-- Real-time statistics cards
+- **JWT Authentication** for persistent security
+- Cloud database powered by **Supabase**
+- Real-time statistics and unique student tracking
+- Full search, date filtering, and CSV export
+- File preview and bulk deletion tools
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | HTML, CSS, JavaScript |
-| Backend | Node.js + Express |
-| Database | SQLite (better-sqlite3) |
-| File Upload | Multer |
-| Auth | Express-session |
-| CSV Export | csv-writer |
+| Frontend | HTML5, CSS3, Vanilla JS |
+| API | Vercel Serverless Functions |
+| Database | Supabase (PostgreSQL) |
+| Storage | Vercel Blob |
+| Auth | JWT (JsonWebToken) + BcryptJS |
 
 ## Getting Started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) v16 or higher
+- [Vercel CLI](https://vercel.com/docs/cli) installed (`npm install -g vercel`)
+- A [Supabase](https://supabase.com) project
 
 ### Installation
 
 ```bash
-# Navigate to the project directory
-cd attendance
-
 # Install dependencies
 npm install
 
-# Start the server
-npm start
+# Start development server
+npm run start-dev
 ```
 
-The server will start at **http://localhost:3000**
+The server will start at **http://localhost:3000** (via Vercel CLI).
 
-
-> ⚠️ **Change these credentials in `server.js` before deploying to production.**
+### Environment Variables
+Create a `.env` file based on `.env.example`:
+- `SUPABASE_URL` & `SUPABASE_ANON_KEY`
+- `BLOB_READ_WRITE_TOKEN`
+- `JWT_SECRET`
+- `ADMIN_USER` & `ADMIN_PASS_HASH`
 
 ## Project Structure
 
 ```
 attendance/
-├── server.js          # Express server + API routes
-├── index.html         # Student submission page
-├── admin.html         # Admin dashboard
-├── styles.css         # Design system & styles
-├── package.json       # Dependencies
-├── attendance.db      # SQLite database (auto-created)
-├── uploads/           # Uploaded files (auto-created)
-└── README.md          # This file
+├── api/                 # Serverless API routes
+├── lib/                 # Shared logic (Supabase, Auth)
+├── public/              # Frontend (served as static)
+├── vercel.json          # Deployment config
+├── package.json         # Scripts and dependencies
+└── README.md            # This file
 ```
-
-## API Endpoints
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/submit` | Submit permission letter | No |
-| POST | `/api/admin/login` | Admin login | No |
-| GET | `/api/admin/logout` | Admin logout | Yes |
-| GET | `/api/admin/check` | Check auth status | No |
-| GET | `/api/submissions` | Get all submissions | Yes |
-| GET | `/api/submissions/csv` | Download CSV | Yes |
-| DELETE | `/api/submissions/:id` | Delete submission | Yes |
 
 ## Deployment
 
-### Render
-1. Push code to a Git repository
-2. Create a new **Web Service** on [Render](https://render.com)
-3. Set build command: `npm install`
-4. Set start command: `npm start`
-5. Add environment variable: `PORT=3000`
-
-### Railway / Fly.io
-Similar setup — connect your repo and configure start command as `npm start`.
-
-> **Note:** For platforms like Vercel/Netlify (static-only), you'll need to deploy the backend separately or use a full-stack platform like Render or Railway.
+1. Push this folder to a GitHub repository.
+2. Connect the repository to **Vercel**.
+3. Add the environment variables from your `.env` to Vercel Settings.
+4. Run the SQL from the implementation plan in your Supabase SQL Editor to create the `submissions` table.
 
 ## License
-
 MIT
