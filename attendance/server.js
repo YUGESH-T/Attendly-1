@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const multer = require('multer');
@@ -5,6 +6,8 @@ const session = require('express-session');
 const Database = require('better-sqlite3');
 const { createObjectCsvWriter } = require('csv-writer');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,14 +32,31 @@ db.exec(`
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
-  secret: 'noproxy-attendance-secret-key-2024',
+  secret: process.env.SESSION_SECRET || 'fallback-secret-change-me',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 3600000 } // 1 hour
 }));
 
-// Serve static files
-app.use(express.static(__dirname));
+// ─── Rate Limiters ──────────────────────────────────────────────
+const submitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: { error: 'Too many submissions from this device. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Serve static files from public/ directory only
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve uploaded files
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -71,8 +91,8 @@ const upload = multer({
 });
 
 // ─── Admin Auth ─────────────────────────────────────────────────
-const ADMIN_USER = 'admin';
-const ADMIN_PASS = 'admin123';
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || '';
 
 function requireAdmin(req, res, next) {
   if (req.session && req.session.isAdmin) {
@@ -84,12 +104,28 @@ function requireAdmin(req, res, next) {
 // ─── API Routes ─────────────────────────────────────────────────
 
 // Student: Submit permission letter
-app.post('/api/submit', upload.single('permissionFile'), (req, res) => {
+app.post('/api/submit', submitLimiter, upload.single('permissionFile'), (req, res) => {
   try {
     const { rollNumber, name, reason } = req.body;
 
     if (!rollNumber || !req.file) {
       return res.status(400).json({ error: 'Roll number and permission file are required.' });
+    }
+
+    // Check for duplicate submission today
+    const today = new Date().toISOString().split('T')[0];
+    const existing = db.prepare(
+      `SELECT id FROM submissions WHERE roll_number = ? AND date(created_at) = date(?)`
+    ).get(rollNumber.trim(), today);
+
+    if (existing) {
+      // Delete the uploaded file since we're rejecting the submission
+      const filePath = path.join(uploadsDir, req.file.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return res.status(409).json({
+        error: `Roll number ${rollNumber.trim()} has already submitted a permission letter today.`,
+        duplicate: true
+      });
     }
 
     const stmt = db.prepare(`
@@ -105,17 +141,43 @@ app.post('/api/submit', upload.single('permissionFile'), (req, res) => {
       req.file.originalname
     );
 
-    res.json({ success: true, message: 'Permission letter submitted successfully!' });
+    // Return receipt data
+    const now = new Date();
+    res.json({
+      success: true,
+      message: 'Permission letter submitted successfully!',
+      receipt: {
+        rollNumber: rollNumber.trim(),
+        name: (name || '').trim(),
+        submittedAt: now.toLocaleString('en-IN', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: true
+        })
+      }
+    });
   } catch (err) {
     console.error('Submit error:', err);
     res.status(500).json({ error: 'Failed to submit. Please try again.' });
   }
 });
 
+// Public: Get today's submission count
+app.get('/api/today-count', (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const result = db.prepare(
+      `SELECT COUNT(*) as count FROM submissions WHERE date(created_at) = date(?)`
+    ).get(today);
+    res.json({ count: result.count });
+  } catch (err) {
+    res.json({ count: 0 });
+  }
+});
+
 // Admin: Login
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
+  if (username === ADMIN_USER && bcrypt.compareSync(password, ADMIN_PASS_HASH)) {
     req.session.isAdmin = true;
     res.json({ success: true, message: 'Login successful!' });
   } else {
@@ -246,14 +308,41 @@ app.delete('/api/submissions/:id', requireAdmin, (req, res) => {
 });
 
 // Serve pages
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
+// ─── Automatic Daily Cleanup ────────────────────────────────────
+function cleanupOldSubmissions() {
+  try {
+    const rows = db.prepare(
+      `SELECT filename FROM submissions WHERE date(created_at) < date('now', 'localtime')`
+    ).all();
+
+    for (const row of rows) {
+      const filePath = path.join(uploadsDir, row.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+
+    const result = db.prepare(
+      `DELETE FROM submissions WHERE date(created_at) < date('now', 'localtime')`
+    ).run();
+
+    if (result.changes > 0) {
+      console.log(`  [Cleanup] Removed ${result.changes} old submission(s) and their files.`);
+    }
+  } catch (err) {
+    console.error('  [Cleanup] Error:', err.message);
+  }
+}
+
+// Run cleanup on startup and then every day at midnight
+cleanupOldSubmissions();
+setInterval(cleanupOldSubmissions, 24 * 60 * 60 * 1000);
 
 // ─── Start Server ───────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n  ╔══════════════════════════════════════════════╗`);
   console.log(`  ║   No Proxy Attendance Portal                 ║`);
   console.log(`  ║   Server running on http://localhost:${PORT}     ║`);
-  console.log(`  ║   Admin: admin / admin123                    ║`);
   console.log(`  ╚══════════════════════════════════════════════╝\n`);
 });

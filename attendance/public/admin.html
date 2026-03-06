@@ -18,10 +18,10 @@
             <span class="navbar-title">No Proxy Portal</span>
         </a>
         <ul class="navbar-links">
-            <li><a href="/">📝 Submit</a></li>
-            <li><a href="/admin" class="active">🔒 Admin</a></li>
+            <li><a href="/">Submit</a></li>
+            <li><a href="/admin" class="active">Admin</a></li>
             <li id="logoutLink" style="display:none;">
-                <a href="#" onclick="logout(); return false;">🚪 Logout</a>
+                <a href="#" onclick="logout(); return false;">Logout</a>
             </li>
         </ul>
     </nav>
@@ -30,7 +30,7 @@
     <div id="loginView" class="login-wrapper">
         <div class="card login-card">
             <div class="card-header">
-                <div class="card-icon">🔐</div>
+                <div class="card-icon">&bull;</div>
                 <div>
                     <h2>Admin Login</h2>
                     <p>Enter your credentials to access the dashboard</p>
@@ -70,21 +70,21 @@
             <!-- Stats Bar -->
             <div class="stats-bar fade-in" id="statsBar">
                 <div class="stat-card">
-                    <div class="stat-icon blue">📋</div>
+                    <div class="stat-icon blue">&mdash;</div>
                     <div>
                         <div class="stat-value" id="totalCount">0</div>
                         <div class="stat-label">Total Submissions</div>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon green">📅</div>
+                    <div class="stat-icon green">&mdash;</div>
                     <div>
                         <div class="stat-value" id="todayCount">0</div>
                         <div class="stat-label">Today</div>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon amber">👥</div>
+                    <div class="stat-icon amber">&mdash;</div>
                     <div>
                         <div class="stat-value" id="uniqueRolls">0</div>
                         <div class="stat-label">Unique Students</div>
@@ -104,10 +104,10 @@
                     <input type="date" id="dateTo">
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-secondary btn-sm" onclick="clearFilters()">✕ Clear</button>
-                    <button class="btn btn-primary btn-sm" onclick="downloadCSV()">📥 CSV</button>
+                    <button class="btn btn-secondary btn-sm" onclick="clearFilters()">Clear</button>
+                    <button class="btn btn-primary btn-sm" onclick="downloadCSV()">Export CSV</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteAllSubmissions()" id="deleteAllBtn"
-                        style="display:none;">🗑️ Delete All</button>
+                        style="display:none;">Delete All</button>
                 </div>
             </div>
 
@@ -130,7 +130,7 @@
                             <tr>
                                 <td colspan="7">
                                     <div class="empty-state">
-                                        <div class="empty-state-icon">📭</div>
+                                        <div class="empty-state-icon">&mdash;</div>
                                         <h3>No submissions yet</h3>
                                         <p>Submissions will appear here once students upload their permission letters.
                                         </p>
@@ -153,7 +153,7 @@
             </div>
             <div id="modalContent"></div>
             <div style="margin-top: 1rem; text-align: center;">
-                <a id="modalDownload" href="#" download class="btn btn-primary btn-sm">📥 Download File</a>
+                <a id="modalDownload" href="#" download class="btn btn-primary btn-sm">Download File</a>
             </div>
         </div>
     </div>
@@ -228,7 +228,7 @@
         });
 
         function showLoginAlert(type, msg) {
-            const icons = { error: '❌', success: '✅' };
+            const icons = { error: '', success: '' };
             loginAlert.innerHTML = `
         <div class="alert alert-${type}">
           <span>${icons[type]}</span><span>${msg}</span>
@@ -288,7 +288,7 @@
                 tableBody.innerHTML = `
           <tr><td colspan="7">
             <div class="empty-state">
-              <div class="empty-state-icon">📭</div>
+              <div class="empty-state-icon">&mdash;</div>
               <h3>No submissions found</h3>
               <p>Try adjusting your filters or wait for student submissions.</p>
             </div>
@@ -318,7 +318,7 @@
             </td>
             <td>
               <a href="#" class="file-link" onclick="previewFile('${fileUrl}', '${escapeHtml(row.original_name)}', ${isImage}); return false;" title="${escapeHtml(row.original_name)}">
-                ${isImage ? '🖼️' : '📄'} ${escapeHtml(truncate(row.original_name, 25))}
+                ${escapeHtml(truncate(row.original_name, 25))}
               </a>
             </td>
             <td>
@@ -327,9 +327,9 @@
             </td>
             <td>
               <div class="action-btns">
-                <button class="action-btn" onclick="previewFile('${fileUrl}', '${escapeHtml(row.original_name)}', ${isImage})">👁️ View</button>
-                <a href="${fileUrl}" download="${escapeHtml(row.original_name)}" class="action-btn" title="Download">📥</a>
-                <button class="action-btn delete" onclick="deleteSubmission(${row.id})">🗑️</button>
+                <button class="action-btn" onclick="previewFile('${fileUrl}', '${escapeHtml(row.original_name)}', ${isImage})">View</button>
+                <a href="${fileUrl}" download="${escapeHtml(row.original_name)}" class="action-btn" title="Download">Download</a>
+                <button class="action-btn delete" onclick="deleteSubmission(${row.id})">Delete</button>
               </div>
             </td>
           </tr>`;

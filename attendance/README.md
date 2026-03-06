@@ -56,12 +56,6 @@ npm start
 
 The server will start at **http://localhost:3000**
 
-### Default Admin Credentials
-
-| Field | Value |
-|-------|-------|
-| Username | `admin` |
-| Password | `admin123` |
 
 > ⚠️ **Change these credentials in `server.js` before deploying to production.**
 

@@ -15,12 +15,11 @@
     <!-- Navigation -->
     <nav class="navbar">
         <a href="/" class="navbar-brand">
-            <div class="navbar-logo">NP</div>
             <span class="navbar-title">No Proxy Portal</span>
         </a>
         <ul class="navbar-links">
-            <li><a href="/" class="active">📝 Submit</a></li>
-            <li><a href="/admin">🔒 Admin</a></li>
+            <li><a href="/" class="active">Submit</a></li>
+            <li><a href="/admin">Admin</a></li>
         </ul>
     </nav>
 
@@ -43,10 +42,16 @@
         <!-- Success/Error Messages -->
         <div id="alertBox"></div>
 
+        <!-- Today's Submission Count -->
+        <div class="today-count-bar fade-in" id="todayCountBar">
+            <span class="today-count-label">Submissions received today:</span>
+            <span class="today-count-value" id="todaySubmissionCount">—</span>
+        </div>
+
         <!-- Submission Form -->
-        <div class="card fade-in-delay-1">
+        <div class="card fade-in-delay-1" id="formCard">
             <div class="card-header">
-                <div class="card-icon">📄</div>
+                <div class="card-icon">+</div>
                 <div>
                     <h2>Submit Permission Letter</h2>
                     <p>Fill in the details and upload your permission document</p>
@@ -85,11 +90,11 @@
                     <div class="upload-zone" id="uploadZone">
                         <input type="file" id="permissionFile" name="permissionFile"
                             accept=".pdf,.jpg,.jpeg,.png,.webp,.gif" required>
-                        <div class="upload-icon">📎</div>
+                        <div class="upload-icon">&#8593;</div>
                         <div class="upload-text">Click to upload or drag and drop</div>
                         <div class="upload-hint">PDF, JPG, PNG, WEBP — Max 10MB</div>
                         <div class="upload-filename" id="fileName">
-                            <span>📄</span>
+                            <span>&bull;</span>
                             <span id="fileNameText"></span>
                         </div>
                     </div>
@@ -103,32 +108,34 @@
             </form>
         </div>
 
-        <!-- Info Cards -->
-        <div class="stats-bar fade-in-delay-2" style="margin-top: 2rem;">
-            <div class="stat-card">
-                <div class="stat-icon blue">🔒</div>
+        <!-- Success Receipt Card (hidden by default) -->
+        <div class="card fade-in receipt-card" id="receiptCard" style="display:none;">
+            <div class="card-header">
+                <div class="card-icon receipt-icon">&#10003;</div>
                 <div>
-                    <div class="stat-label">Secure Upload</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">Files stored safely
-                    </div>
+                    <h2>Submission Successful</h2>
+                    <p>Your permission letter has been recorded</p>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon green">✅</div>
-                <div>
-                    <div class="stat-label">Verified Records</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">Timestamped entries
-                    </div>
+            <div class="receipt-details">
+                <div class="receipt-row">
+                    <span class="receipt-label">Roll Number</span>
+                    <span class="receipt-value" id="receiptRoll">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Name</span>
+                    <span class="receipt-value" id="receiptName">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Submitted At</span>
+                    <span class="receipt-value" id="receiptTime">—</span>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon purple">📊</div>
-                <div>
-                    <div class="stat-label">Transparent</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">Admin oversight</div>
-                </div>
-            </div>
+            <button class="btn btn-secondary btn-block" onclick="showFormAgain()" style="margin-top: 1.5rem;">
+                Submit Another
+            </button>
         </div>
+
     </main>
 
     <!-- Footer -->
@@ -139,6 +146,8 @@
     <script>
         // ─── DOM Elements ────────────────────────────────────────
         const form = document.getElementById('submissionForm');
+        const formCard = document.getElementById('formCard');
+        const receiptCard = document.getElementById('receiptCard');
         const uploadZone = document.getElementById('uploadZone');
         const fileInput = document.getElementById('permissionFile');
         const fileName = document.getElementById('fileName');
@@ -147,6 +156,18 @@
         const submitBtn = document.getElementById('submitBtn');
         const submitText = document.getElementById('submitText');
         const submitSpinner = document.getElementById('submitSpinner');
+
+        // ─── Load Today's Count ──────────────────────────────────
+        async function loadTodayCount() {
+            try {
+                const res = await fetch('/api/today-count');
+                const data = await res.json();
+                document.getElementById('todaySubmissionCount').textContent = data.count;
+            } catch (e) {
+                document.getElementById('todaySubmissionCount').textContent = '—';
+            }
+        }
+        loadTodayCount();
 
         // ─── File Upload Handling ─────────────────────────────────
         fileInput.addEventListener('change', () => {
@@ -181,14 +202,29 @@
 
         // ─── Show Alert ──────────────────────────────────────────
         function showAlert(type, message) {
-            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
             alertBox.innerHTML = `
         <div class="alert alert-${type}">
-          <span>${icons[type]}</span>
           <span>${message}</span>
         </div>
       `;
-            setTimeout(() => { alertBox.innerHTML = ''; }, 5000);
+            setTimeout(() => { alertBox.innerHTML = ''; }, 6000);
+        }
+
+        // ─── Show Receipt ────────────────────────────────────────
+        function showReceipt(receipt) {
+            document.getElementById('receiptRoll').textContent = receipt.rollNumber;
+            document.getElementById('receiptName').textContent = receipt.name || '—';
+            document.getElementById('receiptTime').textContent = receipt.submittedAt;
+            formCard.style.display = 'none';
+            receiptCard.style.display = 'block';
+            receiptCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // ─── Show Form Again ─────────────────────────────────────
+        function showFormAgain() {
+            receiptCard.style.display = 'none';
+            formCard.style.display = 'block';
+            alertBox.innerHTML = '';
         }
 
         // ─── Form Submission ─────────────────────────────────────
@@ -227,9 +263,12 @@
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    showAlert('success', data.message);
                     form.reset();
                     uploadZone.classList.remove('has-file');
+                    loadTodayCount();
+                    showReceipt(data.receipt);
+                } else if (data.duplicate) {
+                    showAlert('error', data.error);
                 } else {
                     showAlert('error', data.error || 'Submission failed. Please try again.');
                 }
