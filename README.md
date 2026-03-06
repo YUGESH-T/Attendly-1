@@ -6,7 +6,7 @@ A serverless web application for managing student permission letters related to 
 
 ![Theme](https://img.shields.io/badge/Theme-Academic%20Integrity-0a1628)
 ![Stack](https://img.shields.io/badge/Stack-Supabase%20%2B%20Vercel%20Blob-4a90d9)
-![License](https://img.shields.io/badge/License-MIT-green)
+
 
 ## 🚀 Live Demo
 **Production URL**: [https://attendance-r9rxo47h0-yugesh-ts-projects.vercel.app](https://attendance-r9rxo47h0-yugesh-ts-projects.vercel.app)
@@ -113,7 +113,4 @@ attendance/
 └── README.md            # You are here
 ```
 
----
 
-## 📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
